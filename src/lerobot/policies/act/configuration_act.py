@@ -23,124 +23,61 @@ from lerobot.optim.optimizers import AdamWConfig
 @PreTrainedConfig.register_subclass("act")
 @dataclass
 class ACTConfig(PreTrainedConfig):
-    """Configuration class for the Action Chunking Transformers policy.
-
-    Defaults are configured for training on bimanual Aloha tasks like "insertion" or "transfer".
-
-    The parameters you will most likely need to change are the ones which depend on the environment / sensors.
-    Those are: `input_shapes` and 'output_shapes`.
-
-    Notes on the inputs and outputs:
-        - Either:
-            - At least one key starting with "observation.image is required as an input.
-              AND/OR
-            - The key "observation.environment_state" is required as input.
-        - If there are multiple keys beginning with "observation.images." they are treated as multiple camera
-          views. Right now we only support all images having the same shape.
-        - May optionally work without an "observation.state" key for the proprioceptive robot state.
-        - "action" is required as an output key.
-
-    Args:
-        n_obs_steps: Number of environment steps worth of observations to pass to the policy (takes the
-            current step and additional steps going back).
-        chunk_size: The size of the action prediction "chunks" in units of environment steps.
-        n_action_steps: The number of action steps to run in the environment for one invocation of the policy.
-            This should be no greater than the chunk size. For example, if the chunk size size 100, you may
-            set this to 50. This would mean that the model predicts 100 steps worth of actions, runs 50 in the
-            environment, and throws the other 50 out.
-        input_shapes: A dictionary defining the shapes of the input data for the policy. The key represents
-            the input data name, and the value is a list indicating the dimensions of the corresponding data.
-            For example, "observation.image" refers to an input from a camera with dimensions [3, 96, 96],
-            indicating it has three color channels and 96x96 resolution. Importantly, `input_shapes` doesn't
-            include batch dimension or temporal dimension.
-        output_shapes: A dictionary defining the shapes of the output data for the policy. The key represents
-            the output data name, and the value is a list indicating the dimensions of the corresponding data.
-            For example, "action" refers to an output shape of [14], indicating 14-dimensional actions.
-            Importantly, `output_shapes` doesn't include batch dimension or temporal dimension.
-        input_normalization_modes: A dictionary with key representing the modality (e.g. "observation.state"),
-            and the value specifies the normalization mode to apply. The two available modes are "mean_std"
-            which subtracts the mean and divides by the standard deviation and "min_max" which rescale in a
-            [-1, 1] range.
-        output_normalization_modes: Similar dictionary as `normalize_input_modes`, but to unnormalize to the
-            original scale. Note that this is also used for normalizing the training targets.
-        vision_backbone: Name of the torchvision resnet backbone to use for encoding images.
-        pretrained_backbone_weights: Pretrained weights from torchvision to initialize the backbone.
-            `None` means no pretrained weights.
-        replace_final_stride_with_dilation: Whether to replace the ResNet's final 2x2 stride with a dilated
-            convolution.
-        pre_norm: Whether to use "pre-norm" in the transformer blocks.
-        dim_model: The transformer blocks' main hidden dimension.
-        n_heads: The number of heads to use in the transformer blocks' multi-head attention.
-        dim_feedforward: The dimension to expand the transformer's hidden dimension to in the feed-forward
-            layers.
-        feedforward_activation: The activation to use in the transformer block's feed-forward layers.
-        n_encoder_layers: The number of transformer layers to use for the transformer encoder.
-        n_decoder_layers: The number of transformer layers to use for the transformer decoder.
-        use_vae: Whether to use a variational objective during training. This introduces another transformer
-            which is used as the VAE's encoder (not to be confused with the transformer encoder - see
-            documentation in the policy class).
-        latent_dim: The VAE's latent dimension.
-        n_vae_encoder_layers: The number of transformer layers to use for the VAE's encoder.
-        temporal_ensemble_coeff: Coefficient for the exponential weighting scheme to apply for temporal
-            ensembling. Defaults to None which means temporal ensembling is not used. `n_action_steps` must be
-            1 when using this feature, as inference needs to happen at every step to form an ensemble. For
-            more information on how ensembling works, please see `ACTTemporalEnsembler`.
-        dropout: Dropout to use in the transformer layers (see code for details).
-        kl_weight: The weight to use for the KL-divergence component of the loss if the variational objective
-            is enabled. Loss is then calculated as: `reconstruction_loss + kl_weight * kld_loss`.
+    """ACT (Action Chunking Transformers) 策略的配置类。
+    由于交由 HuggingFace 风格的框架管理，这里继承了 PreTrainedConfig，并支持直接反序列化。
     """
 
-    # Input / output structure.
-    n_obs_steps: int = 1
-    chunk_size: int = 100
-    n_action_steps: int = 100
+    # 1. 输入 / 输出结构 (Input / output structure)
+    n_obs_steps: int = 1  # 丢给策略模型的环境观测历史步数（默认 1，即只看当前时刻）
+    chunk_size: int = 100 # 动作分块大小：一次性预测未来多少步的系列动作
+    n_action_steps: int = 100 # 实际在物理环境中执行的步数。它决定了多久调用一次模型。若是想开启平滑集成，必须设为 1
 
     normalization_mapping: dict[str, NormalizationMode] = field(
         default_factory=lambda: {
-            "VISUAL": NormalizationMode.MEAN_STD,
-            "STATE": NormalizationMode.MEAN_STD,
-            "ACTION": NormalizationMode.MEAN_STD,
+            "VISUAL": NormalizationMode.MEAN_STD, # 图像采用均值-标准差归一化
+            "STATE": NormalizationMode.MEAN_STD,  # 关节状态采用均值-标准差归一化
+            "ACTION": NormalizationMode.MEAN_STD, # 动作采用均值-标准差归一化
         }
     )
 
-    # Architecture.
-    # Vision backbone.
-    vision_backbone: str = "resnet18"
-    pretrained_backbone_weights: str | None = "ResNet18_Weights.IMAGENET1K_V1"
-    replace_final_stride_with_dilation: int = False
-    # Transformer layers.
-    pre_norm: bool = False
-    dim_model: int = 512
-    n_heads: int = 8
-    dim_feedforward: int = 3200
-    feedforward_activation: str = "relu"
-    n_encoder_layers: int = 4
-    # Note: Although the original ACT implementation has 7 for `n_decoder_layers`, there is a bug in the code
-    # that means only the first layer is used. Here we match the original implementation by setting this to 1.
-    # See this issue https://github.com/tonyzhaozh/act/issues/25#issue-2258740521.
-    n_decoder_layers: int = 1
-    # VAE.
-    use_vae: bool = True
-    latent_dim: int = 32
-    n_vae_encoder_layers: int = 4
+    # 2. 架构配置 (Architecture)
+    # 视觉基座网络 (Vision backbone)
+    vision_backbone: str = "resnet18" # 用于编码图片的 Torchvision 骨干网络名称
+    pretrained_backbone_weights: str | None = "ResNet18_Weights.IMAGENET1K_V1" # 使用 ImageNet 预训练权重
+    replace_final_stride_with_dilation: int = False # 是否用空洞卷积替换 ResNet 最后的 2x2 步长下采样操作
+    
+    # 3. Transformer 网络层配置 (Transformer layers)
+    pre_norm: bool = False # 在 Transformer 块中是否使用 pre-norm
+    dim_model: int = 512 # Transformer 的主要隐藏维度
+    n_heads: int = 8 # 多头注意力的头数
+    dim_feedforward: int = 3200 # 前馈神经网络扩展后的隐层维度
+    feedforward_activation: str = "relu" # 激活函数
+    n_encoder_layers: int = 4 # Encoder 编码器层数，负责融合多视角图像和当前的关节状态信息
+    # 注意：原版 ACT 有一个 Bug 导致只用到 1 层 Decoder。此处为了对齐原版算法的实际表现也设为 1。
+    n_decoder_layers: int = 1 
+    
+    # 4. VAE（变分自编码器）配置：ACT 处理多种抓取分布（动作多模态）的精髓组件
+    use_vae: bool = True # 是否在训练期间使用变分目标（即 CVAE）引入动作随机性
+    latent_dim: int = 32 # VAE 隐维度的长度（这 32 位向量压缩了人类某次特定示范轨迹的特征/风格）
+    n_vae_encoder_layers: int = 4 # VAE 专属编码器的层数
 
-    # Inference.
-    # Note: the value used in ACT when temporal ensembling is enabled is 0.01.
+    # 5. 推理阶段特有优化 (Inference)
+    # 如果开启时序集成（即每步都推理，对重叠预测动作加权平均）来平滑动作，原版建议此处使用 0.01
     temporal_ensemble_coeff: float | None = None
 
-    # Training and loss computation.
-    dropout: float = 0.1
-    kl_weight: float = 10.0
+    # 6. 训练和损失计算超参 (Training and loss computation)
+    dropout: float = 0.1 # 随机丢弃率，防止死记硬背
+    kl_weight: float = 10.0 # VAE 中 KL 散度损失项的权重。控制“模仿”和“泛化生成”的比重。
 
-    # Training preset
-    optimizer_lr: float = 1e-5
-    optimizer_weight_decay: float = 1e-4
-    optimizer_lr_backbone: float = 1e-5
+    # 7. 优化器/训练超参预设 (Training preset)
+    optimizer_lr: float = 1e-5 # Transformer 这边的基础学习率
+    optimizer_weight_decay: float = 1e-4 # 权重衰减惩罚（正则化项），同样用于抗过拟合
+    optimizer_lr_backbone: float = 1e-5 # 视觉骨干网络 (ResNet) 那里单独偏小的学习率
 
     def __post_init__(self):
         super().__post_init__()
 
-        """Input validation (not exhaustive)."""
+        """输入与约束验证逻辑。"""
         if not self.vision_backbone.startswith("resnet"):
             raise ValueError(
                 f"`vision_backbone` must be one of the ResNet variants. Got {self.vision_backbone}."
