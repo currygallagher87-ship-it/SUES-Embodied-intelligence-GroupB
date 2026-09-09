@@ -175,9 +175,6 @@ outputs/
 .cache/*
 
 ### Large Binary Data & Archives ###
-# Datasets (training data, too large for git)
-datasets/
-
 # CUDA library archive
 libcusparse_lt-linux-sbsa-*/
 
