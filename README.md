@@ -12,10 +12,10 @@
 
 上方为自动播放的无声预览（完整 62 秒流程）。点击下方封面，在浏览器中直接播放 **完整演示视频（含声音，720p 流畅版）**：
 
-[![▶️ 播放完整视频](media/SUES_poster.jpg)](https://raw.githubusercontent.com/currygallagher87-ship-it/SUES-Embodied-intelligence-GroupB/main/media/SUES_720p.mp4)
+[![▶️ 播放完整视频](media/SUES_poster.jpg)](https://cdn.jsdelivr.net/gh/currygallagher87-ship-it/SUES-Embodied-intelligence-GroupB@main/media/SUES_720p.mp4)
 
-- 🎞 在线播放版：[`media/SUES_720p.mp4`](https://raw.githubusercontent.com/currygallagher87-ship-it/SUES-Embodied-intelligence-GroupB/main/media/SUES_720p.mp4)（720p，8MB，点击即看）
-- 📥 高清原片：[`media/SUES.mp4`](https://raw.githubusercontent.com/currygallagher87-ship-it/SUES-Embodied-intelligence-GroupB/main/media/SUES.mp4)（1080p，44MB，原始画质下载）
+- 🎞 在线播放版：[`media/SUES_720p.mp4`](https://cdn.jsdelivr.net/gh/currygallagher87-ship-it/SUES-Embodied-intelligence-GroupB@main/media/SUES_720p.mp4)（720p，8MB，点击即看）
+- 📥 高清原片：[`media/SUES.mp4`](https://cdn.jsdelivr.net/gh/currygallagher87-ship-it/SUES-Embodied-intelligence-GroupB@main/media/SUES.mp4)（1080p，44MB，原始画质下载）
 
 ---
 
