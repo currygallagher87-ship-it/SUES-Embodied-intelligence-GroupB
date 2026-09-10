@@ -10,12 +10,12 @@
   success → success.gif （放球成功）
   sleep   → sleep.gif   （空闲/结束）
 
-用法：
+用法（在仓库根目录执行）：
   在一个终端运行此脚本：
-    python emotion_display.py
+    python tools/grasp/emotion_display.py
 
   在另一个终端运行评估脚本：
-    python eval_with_grasp_detect.py
+    python tools/grasp/eval_with_grasp_detect.py
 
 按 Q 或 Ctrl+C 退出。
 """

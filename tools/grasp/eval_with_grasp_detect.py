@@ -6,15 +6,15 @@
   当机械臂的 6 个关节同时接近预设的"放球姿态"时，
   判定机器人即将/正在放球，等待几秒后自动退出。
 
-  "放球姿态"通过 grasp_debug.py 标定并保存在 place_pose.json 中。
+  "放球姿态"通过 tools/grasp/grasp_debug.py 标定并保存在同目录的 place_pose.json 中。
 
   新增功能：
   - 开始执行时发布 grab 表情指令。
   - 检测到放球完成后发布 success 表情指令，联动 K10 行空板与 LED 灯带。
 
-用法：
-  1. 先运行 python grasp_debug.py 标定放球姿态
-  2. 再运行 python eval_with_grasp_detect.py
+用法（在仓库根目录执行）：
+  1. 先运行 python tools/grasp/grasp_debug.py 标定放球姿态
+  2. 再运行 python tools/grasp/eval_with_grasp_detect.py
 """
 
 import json
@@ -66,8 +66,8 @@ EPISODE_TIME_S = 300  # 最大运行时间（秒）
 # --- 任务完成检测配置 ---
 TASK_DETECT_ENABLED = True
 
-# 放球姿态文件（由 grasp_debug.py 生成）
-PLACE_POSE_FILE = "place_pose.json"
+# 放球姿态文件（由 grasp_debug.py 生成，固定在本脚本同目录）
+PLACE_POSE_FILE = str(Path(__file__).resolve().parent / "place_pose.json")
 
 # 各关节位置与放球姿态的最大允许偏差
 # 所有关节同时在此容差范围内 → 判定到达放球位置
@@ -203,7 +203,7 @@ def load_place_pose(filepath: str) -> dict[str, float]:
     if not path.exists():
         raise FileNotFoundError(
             f"找不到放球姿态文件: {filepath}\n"
-            f"请先运行 python grasp_debug.py 标定放球姿态。"
+            f"请先运行 python tools/grasp/grasp_debug.py 标定放球姿态。"
         )
     with open(path) as f:
         pose = json.load(f)

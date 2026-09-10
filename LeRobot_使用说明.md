@@ -14,7 +14,7 @@ pip install -e .
 # 如果连接的是 Feetech (飞特) 舵机，建议执行：
 pip install -e ".[feetech]"
 ```
-**情绪展示依赖**：为了运行新增的 `emotion_display.py`，请确保安装了以下库：
+**情绪展示依赖**：为了运行新增的 `tools/grasp/emotion_display.py`，请确保安装了以下库：
 ```bash
 pip install opencv-python numpy Pillow
 ```
@@ -23,11 +23,11 @@ pip install opencv-python numpy Pillow
 由于 Linux 系统每次重新插拔 USB 时端口号 (`/dev/ttyUSB0` 等) 可能会变动，这会导致程序找不到机械臂。
 *   **固定串口**：提供了一个脚本自动化绑定唯一的端口名（如 `/dev/follower_arm`）：
     ```bash
-    sudo ./fix_arm_port.sh
+    sudo bash tools/arm/fix_arm_port.sh
     ```
     *根据提示输入当前实际的 `/dev/ttyUSBx` 路径，脚本会提取硬件序列号，写入 udev 规则。完成后重新插拔一次 USB 线即可永久生效。*
-*   **检查舵机连通性**：运行 `python scan.py`。该脚本会以 1Mbps 的波特率扫描总线上的电机，打印出所有在线的电机 ID，确保 1~6 号关节均正常在线。
-*   **检查摄像头**：运行 `python find_cam.py`，列出系统中可用的摄像头 ID 索引。请根据输出结果，修改 `eval_with_grasp_detect.py` 中的 `CAMERAS` 配置（如 `index_or_path=0` 和 `2`）。
+*   **检查舵机连通性**：运行 `python tools/arm/scan.py`。该脚本会以 1Mbps 的波特率扫描总线上的电机，打印出所有在线的电机 ID，确保 1~6 号关节均正常在线。
+*   **检查摄像头**：运行 `python tools/arm/find_cam.py`，列出系统中可用的摄像头 ID 索引。请根据输出结果，修改 `tools/grasp/eval_with_grasp_detect.py` 中的 `CAMERAS` 配置（如 `index_or_path=0` 和 `2`）。
 
 ---
 
@@ -35,34 +35,34 @@ pip install opencv-python numpy Pillow
 
 本次升级的核心功能是**“让机器人知道自己什么时候完成了任务，并给出情绪反馈自动停止”**。这需要以下三个脚本紧密配合：
 
-### 2.1 步骤一：标定目标姿态 (`grasp_debug.py`)
+### 2.1 步骤一：标定目标姿态 (`tools/grasp/grasp_debug.py`)
 在进行自动检测前，我们需要设定一个基准的“放球/任务完成”姿态。
-*   **运行命令**：
+*   **运行命令**（在仓库根目录执行）：
     ```bash
-    python grasp_debug.py
+    python tools/grasp/grasp_debug.py
     ```
 *   **工作原理与操作**：
     1. 脚本启动后会连接机械臂，并**立刻卸载所有 6 个关节的力矩 (Torque Off)**。
     2. 此时机械臂处于软态，您可以**手动将其拖动**到完美的“放球位置”或“夹取成功位置”。
     3. 脚本会在终端**实时刷新**当前 6 个关节的绝对数值。
     4. 当您调整到满意的位置后，**按下 `Enter` (回车) 键**。
-    5. 程序会将当前的 6 个关节数值提取，并保存至当前目录下的 **`place_pose.json`** 文件中。终端会提示“✅ 姿态已保存”。
+    5. 程序会将当前的 6 个关节数值提取，并保存至脚本同目录（`tools/grasp/`）下的 **`place_pose.json`** 文件中。终端会提示“✅ 姿态已保存”。
     6. **按下 `Ctrl + C`** 安全退出该工具。
 
-### 2.2 步骤二：启动情绪与状态联动服务 (`emotion_display.py`)
+### 2.2 步骤二：启动情绪与状态联动服务 (`tools/grasp/emotion_display.py`)
 如果您的机器人配备了显示屏幕（如行空板），可以启动此服务提供可视化反馈。
 *   **运行命令** (请开启一个全新的终端运行，使其常驻后台)：
     ```bash
-    python emotion_display.py
+    python tools/grasp/emotion_display.py
     ```
 *   **工作原理**：
     该脚本独立于主程序运行，它以 0.5 秒的频率轮询读取 `/tmp/robot_emotion.txt` 文件。根据文件内的文本（如 `search`, `grab`, `success`, `sleep` 等），使用 OpenCV 在屏幕上无缝切换并播放对应的 GIF 动画。
 
-### 2.3 步骤三：带夹取检测的自动化推理评估 (`eval_with_grasp_detect.py`)
-这是最核心的自动化控制脚本。在配置好 `place_pose.json` 和策略模型路径后运行：
-*   **运行命令**：
+### 2.3 步骤三：带夹取检测的自动化推理评估 (`tools/grasp/eval_with_grasp_detect.py`)
+这是最核心的自动化控制脚本。在配置好 `tools/grasp/place_pose.json` 和策略模型路径后运行：
+*   **运行命令**（在仓库根目录执行）：
     ```bash
-    python eval_with_grasp_detect.py
+    python tools/grasp/eval_with_grasp_detect.py
     ```
 *   **脚本内部的自动化工作逻辑**：
     1. **初始化与加载**：脚本首先加载 `place_pose.json`，并连接摄像头、机械臂，最后将 ACT 模型加载到 GPU。
@@ -74,14 +74,16 @@ pip install opencv-python numpy Pillow
 
 ---
 
-## 三、 数据集管理与清洗工具链 (`scratch/` 目录)
+## 三、 数据集管理与清洗工具链 (`tools/dataset/` 目录)
 
-在训练前，难免会采集到损坏的或需要优化的数据片段，`scratch/` 目录提供了一套完善的离线数据集处理工具（无需写代码，直接运行即可）。
+在训练前，难免会采集到损坏的或需要优化的数据片段，`tools/dataset/` 目录提供了一套离线数据集处理工具（无需写代码，在仓库根目录直接运行即可）。
 
-*   **`check_corruptions.py` (数据损坏筛查)**：
+*   **`tools/dataset/check_corruptions.py` (数据损坏筛查)**：
     批量读取数据集中的 `.parquet` 文件，检查 `timestamp` 字段。若发现时间戳倒退或异常跳跃，会打印出损坏的 `episode` 编号。
-*   **`delete_episode.py` (精准删除坏数据)**：
-    用法：`python delete_episode.py <episode_index>`。它不仅会物理删除对应的 `.parquet` 和 `.mp4` 文件，还会自动修正 `meta/episodes.jsonl` 和 `info.json` 中的总帧数与条目，保持数据集元数据的一致性。
+*   **`tools/dataset/delete_episode.py` (精准删除坏数据)**：
+    用法：`python tools/dataset/delete_episode.py <episode_index>`。它不仅会物理删除对应的 `.parquet` 和 `.mp4` 文件，还会自动修正 `meta/episodes.jsonl` 和 `info.json` 中的总帧数与条目，保持数据集元数据的一致性。
+*   **`tools/dataset/fix_dataset_59.py` (一次性修复脚本)**：
+    针对特定损坏 episode 的元数据与文件清理，逻辑与 `delete_episode.py` 类似，可作为修复范例参考。
 *   **`filter_dataset.py` (数据集截断提取)**：
     用于将一个庞大的数据集截取前 $N$ 条（例如前 181 条）并拷贝到一个新文件夹。自动更新所有的 Meta 数据，用于提纯高质量的基础数据。
 *   **`merge_dataset.py` (无缝拼接数据集)**：
@@ -91,20 +93,20 @@ pip install opencv-python numpy Pillow
 
 ## 四、 机械臂安全调试与快捷控制指令
 
-调试机械臂非常危险，稍有不慎可能造成撞击损坏。项目中包含一套底层的安全控制工具：
+调试机械臂非常危险，稍有不慎可能造成撞击损坏。项目中包含一套底层的安全控制工具，均位于 `tools/arm/` 目录，在仓库根目录运行（例如 `python tools/arm/relax_arm.py`）：
 
 ### 4.1 基础快捷状态控制
-*   **`relax_arm.py`**: 一键向所有 6 个关节发送 `Torque Off` (地址 40 写 0) 指令。使机械臂瞬间无力瘫软，方便人工将其摆放到安全位置。
-*   **`read_safe_pose.py`**: 配合上方使用，摆放好后，运行此脚本会读取地址 56 的真实坐标，打印出当前完美姿态的各个关节数值，供记录使用。
+*   **`tools/arm/relax_arm.py`**: 一键向所有 6 个关节发送 `Torque Off` (地址 40 写 0) 指令。使机械臂瞬间无力瘫软，方便人工将其摆放到安全位置。
+*   **`tools/arm/read_safe_pose.py`**: 配合上方使用，摆放好后，运行此脚本会读取地址 56 的真实坐标，打印出当前完美姿态的各个关节数值，供记录使用。
 
 ### 4.2 极度安全的归位系统
-*   **`default_pose.py` / `auto_pose.py`**:
+*   **`tools/arm/default_pose.py` / `tools/arm/auto_pose.py`**:
     很多开源项目在归位时会让各个关节以最快速度直接冲向目标，极易砸到桌子。这两个脚本对 Feetech 舵机的底层寄存器做了精细控制：
     1. 强制写入加速度 `ACCEL=20` (地址 41)，确保起步平滑。
     2. 强制限制最高速度 `SPEED_LIMIT=0`，并将运行时间强行锁死为 5000 毫秒 (`MOVE_TIME=5000`)。
     3. 最后向地址 42 同步发送坐标。这保证了无论当前机械臂在什么扭曲的姿态，都会**像树懒一样极为缓慢且各个关节同步**地回归基准收纳姿态。
 
-### 4.3 物理极值探测 (`auto_find_limits.py`)
+### 4.3 物理极值探测 (`tools/arm/auto_find_limits.py`)
 当更换了机构或螺丝后，运行此脚本可以安全探索物理极限。它会以超低速度让关节向两侧盲探，利用闭环反馈：一旦检测到位置变化卡死（误差>15但物理位置不更新），立刻判定为碰到物理死区并回撤释放应力，自动为您总结出安全的 `SAFE_LIMITS`。
 
 ---

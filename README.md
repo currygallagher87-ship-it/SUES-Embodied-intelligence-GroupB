@@ -13,13 +13,9 @@
 | `src/lerobot/` | LeRobot 核心代码库（含二次开发修改） |
 | `datasets/lerobot_data_220/` | **训练用数据集**（220 条动态抓取轨迹，1.5GB） |
 | `auto/` | 手动轨迹录制与回放工具 |
-| `grasp_debug.py` | 目标姿态标定工具 |
-| `eval_with_grasp_detect.py` | 带夹取检测的自动化推理评估 |
-| `emotion_display.py` | 情绪联动可视化服务 |
-| `relax_arm.py` / `default_pose.py` | 机械臂安全控制 |
-| `auto_find_limits.py` | 物理极值探测 |
-| `delete_episode.py` / `check_corruptions.py` | 数据集清洗工具 |
-| `fix_arm_port.sh` | 串口固定脚本 |
+| `tools/grasp/` | 夹取工作流：`grasp_debug.py` 姿态标定、`eval_with_grasp_detect.py` 带夹取检测的评估、`emotion_display.py` 情绪联动服务、`place_pose.json` 标定数据 |
+| `tools/arm/` | 机械臂安全调试与硬件工具：`relax_arm.py`、`default_pose.py`、`auto_pose.py`、`auto_find_limits.py`、`read_safe_pose.py`、`scan.py`、`find_cam.py`、`fix_id_5.py`、`fix_arm_port.sh` |
+| `tools/dataset/` | 数据集清洗工具：`delete_episode.py`、`check_corruptions.py`、`fix_dataset_59.py` |
 | `LeRobot_使用说明.md` | 完整详细使用手册 |
 
 ---
@@ -46,14 +42,14 @@ pip install opencv-python numpy Pillow
 Linux 下 USB 串口可能变动，使用脚本固定端口名：
 
 ```bash
-sudo ./fix_arm_port.sh
+sudo bash tools/arm/fix_arm_port.sh
 ```
 
 ### 硬件连通性测试
 
 ```bash
-python scan.py          # 扫描舵机（确保 1~6 号关节在线）
-python find_cam.py      # 列出可用摄像头 ID
+python tools/arm/scan.py      # 扫描舵机（确保 1~6 号关节在线）
+python tools/arm/find_cam.py  # 列出可用摄像头 ID
 ```
 
 ---
@@ -75,8 +71,9 @@ datasets/lerobot_data_220/
 
 | 脚本 | 用途 |
 |---|---|
-| `python check_corruptions.py` | 批量筛查时间戳倒退或异常的 episode |
-| `python delete_episode.py <idx>` | 精准删除坏数据，自动修正元数据 |
+| `python tools/dataset/check_corruptions.py` | 批量筛查时间戳倒退或异常的 episode |
+| `python tools/dataset/delete_episode.py <idx>` | 精准删除坏数据，自动修正元数据 |
+| `python tools/dataset/fix_dataset_59.py` | 修复/移除指定 episode 并修正元数据（一次性修复脚本） |
 | `filter_dataset.py` | 截取前 N 条数据提纯 |
 | `merge_dataset.py` | 将新采集数据无缝拼接到已有数据集 |
 
@@ -113,16 +110,16 @@ python -m lerobot.scripts.train \
 ### 步骤一：标定目标姿态
 
 ```bash
-python grasp_debug.py
+python tools/grasp/grasp_debug.py
 ```
 
-启动后卸载力矩 → 手动拖动机械臂到"放球/夹取成功"位置 → 按 Enter 保存 → 自动写入 `place_pose.json`。
+启动后卸载力矩 → 手动拖动机械臂到"放球/夹取成功"位置 → 按 Enter 保存 → 自动写入 `tools/grasp/place_pose.json`。
 
 ### 步骤二：启动情绪联动服务
 
 ```bash
 # 新开终端，常驻后台
-python emotion_display.py
+python tools/grasp/emotion_display.py
 ```
 
 以 0.5s 频率轮询 `/tmp/robot_emotion.txt`，根据 `search` / `grab` / `success` / `sleep` 等状态切换 GIF 动画。
@@ -130,12 +127,12 @@ python emotion_display.py
 ### 步骤三：带夹取检测的自动化推理
 
 ```bash
-python eval_with_grasp_detect.py
+python tools/grasp/eval_with_grasp_detect.py
 ```
 
 自动化工作逻辑：
 
-1. 加载 `place_pose.json`，连接摄像头、机械臂、加载 ACT 模型
+1. 加载 `tools/grasp/place_pose.json`，连接摄像头、机械臂、加载 ACT 模型
 2. 开场发送 `grab` 指令，情绪系统显示"抓取中"
 3. 实时将当前关节位置与目标位置对比，6 关节误差全部 < `POSE_TOLERANCE`（默认 20 步）时计数
 4. **Debounce 机制**：误差连续保持 `POSE_MATCH_FRAMES`（默认 15 帧，约 0.5s）才确认放球姿态
@@ -150,11 +147,11 @@ python eval_with_grasp_detect.py
 
 | 脚本 | 功能 |
 |---|---|
-| `relax_arm.py` | 一键卸载所有关节力矩，机械臂瞬间无力瘫软 |
-| `read_safe_pose.py` | 读取当前各关节坐标数值 |
-| `default_pose.py` | 极度安全的缓慢归位（加速度锁死、运行时间 5s） |
-| `auto_pose.py` | 同上，自动化归位 |
-| `auto_find_limits.py` | 超低速度盲探物理极限，自动总结安全范围 |
+| `python tools/arm/relax_arm.py` | 一键卸载所有关节力矩，机械臂瞬间无力瘫软 |
+| `python tools/arm/read_safe_pose.py` | 读取当前各关节坐标数值 |
+| `python tools/arm/default_pose.py` | 极度安全的缓慢归位（加速度锁死、运行时间 5s） |
+| `python tools/arm/auto_pose.py` | 同上，自动化归位 |
+| `python tools/arm/auto_find_limits.py` | 超低速度盲探物理极限，自动总结安全范围 |
 
 ---
 

@@ -7,15 +7,15 @@
 
 按 Enter 键可以保存当前姿态到文件，供 eval_with_grasp_detect.py 使用。
 
-用法：
-  python grasp_debug.py
+用法（在仓库根目录执行）：
+  python tools/grasp/grasp_debug.py
 
 操作：
   1. 手动把机械臂摆到"放球位置"
   2. 按 Enter 保存该姿态
   3. 按 Ctrl+C 退出
 
-保存的姿态文件：place_pose.json
+保存的姿态文件：与本脚本同目录的 place_pose.json
 """
 
 import json
@@ -25,6 +25,7 @@ import sys
 import os
 import logging
 import threading
+from pathlib import Path
 
 from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig
 from lerobot.robots.so101_follower import SO101Follower, SO101FollowerConfig
@@ -36,7 +37,8 @@ CAMERAS = {
     "handeye": OpenCVCameraConfig(index_or_path=2, width=640, height=480, fps=30),
     "front": OpenCVCameraConfig(index_or_path=0, width=640, height=480, fps=30),
 }
-POSE_FILE = "place_pose.json"  # 保存的姿态文件路径
+# 姿态文件固定保存在本脚本所在目录，无论从哪个工作目录运行都能正确读写
+POSE_FILE = str(Path(__file__).resolve().parent / "place_pose.json")
 # ==========================
 
 logging.basicConfig(level=logging.WARNING)
