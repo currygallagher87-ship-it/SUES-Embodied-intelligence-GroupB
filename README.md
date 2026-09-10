@@ -10,11 +10,12 @@
 
 ![SUES 机械臂动态抓取平台演示（自动播放预览）](media/SUES_preview.gif)
 
-上方为自动播放的无声预览（完整 62 秒流程）。点击下方封面，可在 GitHub 内置播放器中观看 **完整 1080p 原视频（含声音）**：
+上方为自动播放的无声预览（完整 62 秒流程）。点击下方封面，可在 GitHub 内置播放器中直接观看 **完整演示视频（含声音，720p 流畅版）**：
 
-[![▶️ 播放完整视频 SUES.mp4](media/SUES_poster.jpg)](media/SUES.mp4)
+[![▶️ 播放完整视频](media/SUES_poster.jpg)](media/SUES_720p.mp4)
 
-视频原文件：[`media/SUES.mp4`](media/SUES.mp4)（1080p，44MB）
+- 🎞 在线播放版：[`media/SUES_720p.mp4`](media/SUES_720p.mp4)（720p，8MB，点击即看）
+- 📥 高清原片：[`media/SUES.mp4`](media/SUES.mp4)（1080p，44MB，原始画质下载）
 
 ---
 
@@ -22,7 +23,7 @@
 
 | 目录 / 文件 | 说明 |
 |---|---|
-| `media/SUES.mp4` | **项目演示视频**（1080p 原视频 + README 自动播放 GIF 预览与封面） |
+| `media/` | **项目演示视频**：`SUES_720p.mp4`（在线播放版）、`SUES.mp4`（1080p 原片）、`SUES_preview.gif`（README 自动播放预览）、`SUES_poster.jpg`（封面） |
 | `src/lerobot/` | LeRobot 核心代码库（含二次开发修改） |
 | `datasets/lerobot_data_220/` | **训练用数据集**（220 条动态抓取轨迹，1.5GB） |
 | `auto/` | 手动轨迹录制与回放工具 |
